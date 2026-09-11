@@ -463,6 +463,7 @@ def build_overview():
         "you": you,
         "chat_count": len(chats),
         "total_messages_sent": total_messages_sent,
+        "total_words_mine": sum(word_totals.values()),
         "total_reactions_given": total_reactions_given,
         "attachments_sent": dict(attachments_sent.most_common()),
         "most_active_chat": most_active_chat,

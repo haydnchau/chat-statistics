@@ -59,6 +59,17 @@ export default function Overview({ data, error }) {
           </div>
         </div>
 
+        {data.total_words_mine != null && (
+          <div className="stat-card glass">
+            <div className="glass__content">
+              <p className="stat-card__value">
+                {data.total_words_mine.toLocaleString()}
+              </p>
+              <p className="stat-card__label">words sent</p>
+            </div>
+          </div>
+        )}
+
         {data.most_active_chat && (
           <div className="stat-card glass">
             <div className="glass__content">

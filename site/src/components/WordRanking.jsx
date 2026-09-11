@@ -23,6 +23,31 @@ export default function WordRanking({ data }) {
     setExpanded(false);
   }
 
+  // Per-member breakdown: how many messages and words each person sent in
+  // this chat. message_counts comes straight from process_chat.py; word
+  // totals are derived by summing each sender's full top_words_by_sender
+  // list (no longer capped at 50, so this sum is accurate).
+  const messageCounts = data.message_counts || {};
+  const members = Array.from(
+    new Set([...Object.keys(messageCounts), ...senders])
+  )
+    .map((name) => ({
+      name,
+      messages: messageCounts[name] || 0,
+      words: (data.top_words_by_sender[name] || []).reduce(
+        (sum, [, count]) => sum + count,
+        0
+      ),
+    }))
+    .sort((a, b) => b.messages - a.messages);
+  const memberTotals = members.reduce(
+    (totals, m) => ({
+      messages: totals.messages + m.messages,
+      words: totals.words + m.words,
+    }),
+    { messages: 0, words: 0 }
+  );
+
   return (
     <div className="ranking">
       <header className="ranking__header">
@@ -85,6 +110,39 @@ export default function WordRanking({ data }) {
         >
           <span className="glass__content">Show fewer</span>
         </button>
+      )}
+
+      {members.length > 0 && (
+        <section className="sent">
+          <h3 className="sent__title">members</h3>
+          <div className="sent__table-wrap glass">
+            <div className="glass__content">
+              <table className="sent__table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>messages</th>
+                    <th>words</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.name}>
+                      <td className="sent__sender">{m.name}</td>
+                      <td>{m.messages.toLocaleString()}</td>
+                      <td>{m.words.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  <tr className="sent__total-row">
+                    <td className="sent__sender">total</td>
+                    <td>{memberTotals.messages.toLocaleString()}</td>
+                    <td>{memberTotals.words.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       )}
 
       {data.attachment_counts && Object.keys(data.attachment_counts).length > 0 && (
