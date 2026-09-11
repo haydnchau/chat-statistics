@@ -54,7 +54,7 @@ Once you've downloaded/unzipped this project folder, navigate into it.
 Replace the path below with wherever you actually put it:
 
 ```
-cd path/to/chat-stats
+cd ...your_instagram_activities//messages/inbox/chat-stats
 ```
 
 (Tip: you can usually type `cd ` — with a trailing space — then drag
