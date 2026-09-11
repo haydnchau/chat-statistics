@@ -25,6 +25,7 @@ ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "site" / "public" / "data"
 MANIFEST_PATH = DATA_DIR / "manifest.json"
 OVERVIEW_PATH = DATA_DIR / "overview.json"
+CONFIG_PATH = ROOT / ".chatstats_config.json"
 
 # A small set of very common English words to exclude from "most used"
 # rankings so results aren't dominated by "the", "you", "i", etc.
@@ -492,12 +493,33 @@ def process_all(conversations):
     print("\nRun the site with: cd site && npm run dev")
 
 
+def saved_inbox_path():
+    """Reads the export path saved by check_setup.py, if any."""
+    if not CONFIG_PATH.exists():
+        return None
+    try:
+        config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    saved = config.get("inbox_path")
+    return saved if saved and Path(saved).expanduser().exists() else None
+
+
 def main():
     args = sys.argv[1:]
     process_all_flag = "--all" in args
     args = [a for a in args if a != "--all"]
 
-    start = Path(args[0]).expanduser().resolve() if args else Path.cwd()
+    if args:
+        start = Path(args[0]).expanduser().resolve()
+    else:
+        remembered = saved_inbox_path()
+        if remembered:
+            start = Path(remembered)
+            print(f"Using saved export path: {start}")
+            print("(run python3 check_setup.py to change it)\n")
+        else:
+            start = Path.cwd()
     inbox = find_inbox(start)
     if inbox is None:
         print(f"Couldn't find an `inbox` folder under {start}.")
@@ -523,12 +545,12 @@ def main():
     print(f"  {stats['total_words']} words counted across {sum(stats['message_counts'].values())} messages")
 
     samples = stats.get("_debug_unmatched_reaction_samples")
-    if samples:
-        print("\n⚠ Found messages mentioning 'react' that weren't recognized as")
-        print("  reaction/system notifications -- their words got counted normally.")
-        print("  Sample(s), for debugging the regex:")
-        for s in samples:
-            print(f"    {s!r}")
+    # if samples:
+    #     print("\n⚠ Found messages mentioning 'react' that weren't recognized as")
+    #     print("  reaction/system notifications -- their words got counted normally.")
+    #     print("  Sample(s), for debugging the regex:")
+    #     for s in samples:
+    #         print(f"    {s!r}")
 
     overview = build_overview()
     if overview and overview.get("you"):

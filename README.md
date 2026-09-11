@@ -73,9 +73,16 @@ This checks that Python and Node are installed correctly and offers to
 install the website's dependencies for you (just follow whatever it
 prints — if it asks a yes/no question, type `y` and press Enter).
 
-Once everything checks out, it **automatically starts the website and
-opens it in your browser for you** — you don't need to run anything
-else to see it. It'll be at `http://localhost:5173`.
+Once everything checks out, it'll ask you to paste the path to your
+downloaded Instagram export (see Step 1 above) and **remembers it**,
+so you won't need to type or paste that path again — `process_chat.py`
+will use it automatically from here on. If you don't have your export
+downloaded yet, just leave this blank and you can pass the path
+manually the first time you run `process_chat.py` instead.
+
+Then it **automatically starts the website and opens it in your
+browser for you** — you don't need to run anything else to see it.
+It'll be at `http://localhost:5173`.
 
 Leave this terminal window open while you're using the site. To stop
 it later, click back into the terminal and press `Ctrl + C`.
@@ -89,22 +96,25 @@ the website can display. You can do this before or after Step 3 —
 if the site is already open, just refresh the page afterward to see
 your data show up.
 
+If you entered your export path in Step 3, you can leave it off the
+commands below — it'll be used automatically. Otherwise, add it to the
+end of the command, same as before.
+
 You have two options:
 
 **Option A — process everything at once (recommended):**
 
 ```
-python3 process_chat.py --all /path/to/your_instagram_activity/messages/inbox
+python3 process_chat.py --all
 ```
 
-Replace the path with wherever you unzipped your download in Step 1.
 This processes every conversation you have in one go and sets
 everything up, including the Overview page.
 
 **Option B — process one chat at a time:**
 
 ```
-python3 process_chat.py /path/to/your_instagram_activity/messages/inbox
+python3 process_chat.py
 ```
 
 This shows you a numbered list of your conversations and lets you pick

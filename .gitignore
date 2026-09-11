@@ -2,3 +2,5 @@ node_modules/
 site/dist/
 site/public/data/*.json
 !site/public/data/manifest.json
+.chatstats_config.json
+__pycache__
