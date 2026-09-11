@@ -556,7 +556,7 @@ def main():
     if overview and overview.get("you"):
         print(f"\n✓ Rebuilt overview.json ({overview['chat_count']} chats, detected you as '{overview['you']}')")
     else:
-        print("\n⚠ overview.json needs at least 2 processed conversations to")
+        print("\n⚠ overview.json needs more than 2 processed conversations to")
         print("  auto-detect which participant is you. Process another chat.")
 
     print("\nRun the site with: cd site && npm run dev")
