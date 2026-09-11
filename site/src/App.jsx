@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ChatList from "./components/ChatList.jsx";
 import WordRanking from "./components/WordRanking.jsx";
 import EmptyState from "./components/EmptyState.jsx";
+import Overview from "./components/Overview.jsx";
 
 function GlassFilter() {
   // SVG turbulence + displacement, applied via `filter: url(#glass-distortion)`
@@ -50,8 +51,10 @@ function useTheme() {
 export default function App() {
   const [manifest, setManifest] = useState(null);
   const [manifestError, setManifestError] = useState(false);
-  const [activeFile, setActiveFile] = useState(null);
+  const [page, setPage] = useState("overview"); // "overview" | a chat's filename
   const [chatData, setChatData] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState(false);
   const [theme, setTheme] = useTheme();
 
   // Load the list of processed chats once on mount.
@@ -65,16 +68,27 @@ export default function App() {
       .catch(() => setManifestError(true));
   }, []);
 
+  // Load the cross-chat overview once on mount.
+  useEffect(() => {
+    fetch("/data/overview.json")
+      .then((r) => {
+        if (!r.ok) throw new Error("no overview");
+        return r.json();
+      })
+      .then(setOverview)
+      .catch(() => setOverviewError(true));
+  }, []);
+
   // Load the selected chat's word-frequency data whenever it changes.
   useEffect(() => {
-    if (!activeFile) {
+    if (page === "overview") {
       setChatData(null);
       return;
     }
-    fetch(`/data/${activeFile}`)
+    fetch(`/data/${page}`)
       .then((r) => r.json())
       .then(setChatData);
-  }, [activeFile]);
+  }, [page]);
 
   const hasChats = manifest && manifest.length > 0;
 
@@ -85,13 +99,18 @@ export default function App() {
       <aside className="sidebar">
         <h1 className="wordmark">ChatStats</h1>
 
+        <button
+          className={
+            "chat-item nav-item" + (page === "overview" ? " chat-item--active" : "")
+          }
+          onClick={() => setPage("overview")}
+        >
+          <span className="chat-item__title">Overview</span>
+        </button>
+
         <div className="sidebar__scroll">
           {hasChats && (
-            <ChatList
-              chats={manifest}
-              activeFile={activeFile}
-              onSelect={setActiveFile}
-            />
+            <ChatList chats={manifest} activeFile={page} onSelect={setPage} />
           )}
         </div>
 
@@ -107,25 +126,23 @@ export default function App() {
       </aside>
 
       <main className="stage">
-        {manifestError && (
+        {page === "overview" && (
+          <Overview data={overview} error={overviewError} />
+        )}
+
+        {page !== "overview" && manifestError && (
           <EmptyState
             heading="No data yet"
             body="Run python3 process_chat.py from the project root to generate stats for a chat, then refresh this page."
           />
         )}
-        {!manifestError && !hasChats && (
+        {page !== "overview" && !manifestError && !hasChats && (
           <EmptyState
             heading="Nothing processed yet"
             body="Run python3 process_chat.py, pick a conversation, then refresh this page."
           />
         )}
-        {hasChats && !activeFile && (
-          <EmptyState
-            heading="Pick a chat"
-            body="Choose a conversation on the left to see its most-used words."
-          />
-        )}
-        {activeFile && chatData && <WordRanking data={chatData} />}
+        {page !== "overview" && chatData && <WordRanking data={chatData} />}
       </main>
     </div>
   );

@@ -17,12 +17,14 @@ directly, it will find it.
 import json
 import re
 import sys
+import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "site" / "public" / "data"
 MANIFEST_PATH = DATA_DIR / "manifest.json"
+OVERVIEW_PATH = DATA_DIR / "overview.json"
 
 # A small set of very common English words to exclude from "most used"
 # rankings so results aren't dominated by "the", "you", "i", etc.
@@ -169,6 +171,20 @@ ZERO_WIDTH_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff]")
 TRAILING_PUNCT_RE = re.compile(r"[^\w]+$", re.UNICODE)
 
 
+def normalize_emoji(emoji: str) -> str:
+    """
+    Different platforms encode the "same" emoji differently -- most
+    commonly, some send a heart (or a few other symbols) with the invisible
+    VARIATION SELECTOR-16 (U+FE0F) suffix and some don't, even though both
+    render identically. Left alone, that splits one reaction into two
+    separate counts (e.g. "❤" and "❤️" as different entries). NFC-normalize
+    and strip variation selectors so they collapse into a single key; the
+    frontend already re-adds U+FE0F for display via asEmojiPresentation().
+    """
+    emoji = unicodedata.normalize("NFC", emoji)
+    return emoji.replace("\ufe0f", "").replace("\ufe0e", "")
+
+
 def tokenize(text: str):
     text = ZERO_WIDTH_RE.sub("", text)
     tokens = []
@@ -270,7 +286,7 @@ def compute_stats(messages, exclude_stopwords=True):
             emoji = r.get("reaction", "")
             reaction_counts[actor] += 1
             if emoji:
-                reaction_emoji_counts[emoji] += 1
+                reaction_emoji_counts[normalize_emoji(emoji)] += 1
 
         content = msg.get("content")
 
@@ -280,7 +296,7 @@ def compute_stats(messages, exclude_stopwords=True):
             if m:
                 actor = m.group("actor") or sender
                 reaction_counts[actor] += 1
-                reaction_emoji_counts[m.group("emoji")] += 1
+                reaction_emoji_counts[normalize_emoji(m.group("emoji"))] += 1
                 continue
 
         attach_type, attach_qty = classify_attachment(msg)
@@ -320,8 +336,13 @@ def compute_stats(messages, exclude_stopwords=True):
         ),
         "_debug_unmatched_reaction_samples": unmatched_reaction_samples,
         "top_words_overall": overall.most_common(100),
+        # NOTE: intentionally NOT capped at 50 (was .most_common(50)). The
+        # overview page sums these across every processed chat to build a
+        # cross-chat "your top words" ranking, so each chat needs to report
+        # its full per-sender counts -- truncating here would silently drop
+        # words that are common overall but not top-50 in any single chat.
         "top_words_by_sender": {
-            sender: counter.most_common(50)
+            sender: counter.most_common()
             for sender, counter in per_sender.items()
         },
         "most_stretched_words": sorted(
@@ -368,8 +389,115 @@ def write_output(convo, stats):
     return out_path
 
 
+# ---------------------------------------------------------------------------
+# Overview (cross-chat aggregate) -- rebuilt every time a chat is processed.
+# ---------------------------------------------------------------------------
+
+def determine_you(chats):
+    """
+    Instagram exports don't flag which participant is you. But your own
+    name is the one participant that shows up in every conversation you've
+    processed (other participants vary chat to chat) -- so the intersection
+    of all `participants` lists across everything processed so far should
+    converge on just your name, once there's more than one conversation.
+    Returns None if it can't narrow it down to exactly one name yet.
+    """
+    participant_sets = [set(c["participants"]) for c in chats if c.get("participants")]
+    if not participant_sets:
+        return None
+    common = set.intersection(*participant_sets)
+    return next(iter(common)) if len(common) == 1 else None
+
+
+def build_overview():
+    """Scans every processed chat's JSON in DATA_DIR and rewrites
+    overview.json: total messages sent, your most active conversation, and
+    your word ranking summed across all chats."""
+    if not DATA_DIR.exists():
+        return None
+
+    chats = []
+    for f in DATA_DIR.glob("*.json"):
+        if f.name in ("manifest.json", "overview.json"):
+            continue
+        try:
+            chats.append(json.loads(f.read_text(encoding="utf-8")))
+        except json.JSONDecodeError:
+            continue
+    if not chats:
+        return None
+
+    you = determine_you(chats)
+
+    total_messages_sent = 0
+    total_reactions_given = 0
+    attachments_sent = Counter()
+    most_active_chat = None
+    word_totals = Counter()
+
+    for c in chats:
+        message_counts = c.get("message_counts", {})
+        chat_total = sum(message_counts.values())
+        your_count = message_counts.get(you, 0) if you else 0
+        total_messages_sent += your_count
+
+        if you:
+            total_reactions_given += c.get("reaction_counts", {}).get(you, 0)
+            for atype, qty in c.get("attachment_counts", {}).get(you, {}).items():
+                attachments_sent[atype] += qty
+
+        if most_active_chat is None or chat_total > most_active_chat["message_count"]:
+            most_active_chat = {
+                "file": f"{safe_filename(c['id'])}.json",
+                "title": c.get("title", "?"),
+                "message_count": chat_total,
+                "your_message_count": your_count,
+            }
+
+        if you:
+            for word, count in c.get("top_words_by_sender", {}).get(you, []):
+                word_totals[word] += count
+
+    overview = {
+        "you": you,
+        "chat_count": len(chats),
+        "total_messages_sent": total_messages_sent,
+        "total_reactions_given": total_reactions_given,
+        "attachments_sent": dict(attachments_sent.most_common()),
+        "most_active_chat": most_active_chat,
+        "top_words_mine": word_totals.most_common(150),
+    }
+    OVERVIEW_PATH.write_text(
+        json.dumps(overview, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return overview
+
+
+def process_all(conversations):
+    print(f"Processing all {len(conversations)} conversations...\n")
+    for convo in conversations:
+        messages = load_all_messages(convo["path"])
+        stats = compute_stats(messages)
+        out_path = write_output(convo, stats)
+        print(f"  ✓ {convo['title'][:50]:<50} -> {out_path.name}")
+
+    overview = build_overview()
+    print()
+    if overview and overview.get("you"):
+        print(f"✓ Wrote overview.json ({overview['chat_count']} chats, detected you as '{overview['you']}')")
+    else:
+        print("⚠ Wrote overview.json, but couldn't detect which participant is you")
+        print("  (needs at least 2 conversations, which --all should already cover --")
+        print("  double check your export actually has more than one conversation).")
+    print("\nRun the site with: cd site && npm run dev")
+
+
 def main():
-    start = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.cwd()
+    args = sys.argv[1:]
+    process_all_flag = "--all" in args
+    args = [a for a in args if a != "--all"]
+
+    start = Path(args[0]).expanduser().resolve() if args else Path.cwd()
     inbox = find_inbox(start)
     if inbox is None:
         print(f"Couldn't find an `inbox` folder under {start}.")
@@ -381,6 +509,10 @@ def main():
     if not conversations:
         print("No conversations with messages found.")
         sys.exit(1)
+
+    if process_all_flag:
+        process_all(conversations)
+        return
 
     convo = prompt_for_conversation(conversations)
     messages = load_all_messages(convo["path"])
@@ -397,6 +529,13 @@ def main():
         print("  Sample(s), for debugging the regex:")
         for s in samples:
             print(f"    {s!r}")
+
+    overview = build_overview()
+    if overview and overview.get("you"):
+        print(f"\n✓ Rebuilt overview.json ({overview['chat_count']} chats, detected you as '{overview['you']}')")
+    else:
+        print("\n⚠ overview.json needs at least 2 processed conversations to")
+        print("  auto-detect which participant is you. Process another chat.")
 
     print("\nRun the site with: cd site && npm run dev")
 
