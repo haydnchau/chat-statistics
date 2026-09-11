@@ -54,7 +54,7 @@ Once you've downloaded/unzipped this project folder, navigate into it.
 Replace the path below with wherever you actually put it:
 
 ```
-cd ...your_instagram_activities//messages/inbox/chat-stats
+cd path/to/chat-stats
 ```
 
 (Tip: you can usually type `cd ` — with a trailing space — then drag
@@ -63,22 +63,33 @@ you.)
 
 ---
 
-## Step 3: Check your setup
+## Step 3: Check your setup (and start the site)
 
 ```
 python3 check_setup.py
 ```
 
 This checks that Python and Node are installed correctly and offers to
-install the website's dependencies for you. Just follow whatever it
-prints — if it asks a yes/no question, type `y` and press Enter.
+install the website's dependencies for you (just follow whatever it
+prints — if it asks a yes/no question, type `y` and press Enter).
+
+Once everything checks out, it **automatically starts the website and
+opens it in your browser for you** — you don't need to run anything
+else to see it. It'll be at `http://localhost:5173`.
+
+Leave this terminal window open while you're using the site. To stop
+it later, click back into the terminal and press `Ctrl + C`.
 
 ---
 
 ## Step 4: Process your chats
 
 This step reads your downloaded Instagram data and turns it into stats
-the website can display. You have two options:
+the website can display. You can do this before or after Step 3 —
+if the site is already open, just refresh the page afterward to see
+your data show up.
+
+You have two options:
 
 **Option A — process everything at once (recommended):**
 
@@ -103,22 +114,20 @@ them.
 
 > Either way, if you run this again later with more chats, it just
 > adds to what's already there — it won't erase your earlier progress.
+> Just refresh the site in your browser afterward to see the update.
 
 ---
 
-## Step 5: Run the website
+## Restarting the site later
+
+Closed the terminal or stopped the site? Just run Step 3 again:
 
 ```
-cd site
-npm run dev
+python3 check_setup.py
 ```
 
-This starts the website on your computer. It'll print a web address
-that looks like `http://localhost:5173` — open that in your browser
-(Chrome, Safari, etc). You'll see your stats there.
-
-To stop the website later, click back in the terminal window and press
-`Ctrl + C`.
+It'll skip straight to opening the site since everything's already
+installed.
 
 ---
 
@@ -145,8 +154,9 @@ To stop the website later, click back in the terminal window and press
   at least 2 processed conversations to figure out (it looks for the
   one name that appears in every chat). Process another chat and
   refresh.
-- **Something looks broken/blank** — try fully stopping the website
-  (`Ctrl + C` in the terminal) and running `npm run dev` again.
+- **Something looks broken/blank** — stop the site (`Ctrl + C` in the
+  terminal it's running in) and run `python3 check_setup.py` again to
+  restart it.
 
 ---
 
