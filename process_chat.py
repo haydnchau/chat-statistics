@@ -201,7 +201,7 @@ def tokenize(text: str):
 # 😍 to your message") rather than (or in addition to) a `reactions` list
 # on the reacted-to message. This extracts actor + emoji from that text.
 REACTION_TEXT_RE = re.compile(
-    r"^(?P<actor>.+?)\s+reacted\s+(?P<emoji>\S+)\s+to\s+(?:your|a)\s+message\.?$",
+    r"^(?:(?P<actor>.+?)\s+)?[Rr]eacted\s+[\"'\u201c\u2018]?\s*(?P<emoji>\S+?)\s*[\"'\u201d\u2019\u201c]?\s+to\s+(?:your|a)\s+message\.?$",
     re.IGNORECASE,
 )
 
@@ -259,6 +259,7 @@ def compute_stats(messages, exclude_stopwords=True):
     reaction_counts = Counter()  # actor -> reactions given
     reaction_emoji_counts = Counter()  # emoji -> times used
     total_words = 0
+    unmatched_reaction_samples = []  # debug: content mentioning "react" that slipped through
 
     for msg in messages:
         sender = msg.get("sender_name", "Unknown")
@@ -277,7 +278,8 @@ def compute_stats(messages, exclude_stopwords=True):
         if content and not msg.get("reactions"):
             m = REACTION_TEXT_RE.match(content.strip())
             if m:
-                reaction_counts[m.group("actor")] += 1
+                actor = m.group("actor") or sender
+                reaction_counts[actor] += 1
                 reaction_emoji_counts[m.group("emoji")] += 1
                 continue
 
@@ -291,6 +293,9 @@ def compute_stats(messages, exclude_stopwords=True):
 
         if SYSTEM_MESSAGE_RE.match(content.strip()):
             continue  # notification boilerplate, not a real message
+
+        if "react" in content.lower() and len(unmatched_reaction_samples) < 5:
+            unmatched_reaction_samples.append(content)
 
         message_counts[sender] += 1
         for raw_word in tokenize(content):
@@ -313,6 +318,7 @@ def compute_stats(messages, exclude_stopwords=True):
         "reaction_emoji_counts": dict(
             Counter(reaction_emoji_counts).most_common(20)
         ),
+        "_debug_unmatched_reaction_samples": unmatched_reaction_samples,
         "top_words_overall": overall.most_common(100),
         "top_words_by_sender": {
             sender: counter.most_common(50)
@@ -345,7 +351,7 @@ def write_output(convo, stats):
         "id": convo["id"],
         "title": convo["title"],
         "participants": convo["participants"],
-        **stats,
+        **{k: v for k, v in stats.items() if not k.startswith("_debug")},
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     manifest = []
@@ -383,6 +389,15 @@ def main():
 
     print(f"\n✓ Wrote stats for '{convo['title']}' -> {out_path}")
     print(f"  {stats['total_words']} words counted across {sum(stats['message_counts'].values())} messages")
+
+    samples = stats.get("_debug_unmatched_reaction_samples")
+    if samples:
+        print("\n⚠ Found messages mentioning 'react' that weren't recognized as")
+        print("  reaction/system notifications -- their words got counted normally.")
+        print("  Sample(s), for debugging the regex:")
+        for s in samples:
+            print(f"    {s!r}")
+
     print("\nRun the site with: cd site && npm run dev")
 
 

@@ -498,7 +498,9 @@ a:focus-visible {
 }
 
 .emoji-chip__emoji {
-  font-size: 15px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 16px;
+  color: initial;
 }
 
 .emoji-chip__count {
