@@ -1,14 +1,68 @@
-:root {
-  --bg: #15141a;
-  --bg-raised: #1c1b23;
-  --line: #322f3b;
-  --text: #ece7e0;
-  --text-dim: #8f8b9a;
-  --gold: #c9a227;
-  --rose: #b97490;
+/* font import */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,900;1,600;1,700&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap");
 
-  --serif: "Fraunces", Georgia, serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+:root {
+  --serif: "Fraunces", Georgia, serif; /* was "Instrument Serif" */
+  --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+body {
+  font-weight: 500; /* added */
+}
+
+.wordmark            { font-weight: 700; } /* was 400 */
+.theme-toggle        { font-weight: 600; } /* added */
+.chat-item__title    { font-weight: 600; } /* added */
+.chat-item__count    { font-weight: 600; } /* added */
+.empty-state__heading{ font-weight: 700; } /* was 400 */
+.ranking__title      { font-weight: 700; } /* was 400 */
+.ranking__subtitle   { font-weight: 600; } /* added */
+.tab                 { font-weight: 600; } /* added */
+.word-bar__rank      { font-weight: 600; } /* added */
+.word-bar__word      { font-weight: 600; } /* added */
+.word-bar__count     { font-weight: 600; } /* added */
+.expand-btn          { font-weight: 700; } /* added */
+.stretched__title    { font-weight: 700; } /* was 400 */
+.stretched__item     { font-weight: 600; } /* added */
+/* Tokens -------------------------------------------------------------- */
+
+:root {
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+
+  --serif: "Instrument Serif", Georgia, serif;
+  --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f2ef;
+  --bg-image: radial-gradient(circle at 20% 0%, #ffffff, #eceae5 70%);
+  --text: #111110;
+  --text-dim: #6d6a63;
+  --line: rgba(17, 17, 16, 0.1);
+  --fill: #111110;
+
+  --glass-tint: rgba(255, 255, 255, 0.45);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(17, 17, 16, 0.08);
+  --glass-shadow: rgba(17, 17, 16, 0.12);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --bg-image: radial-gradient(circle at 20% 0%, #1a1a1a, #060606 70%);
+  --text: #f2f1ee;
+  --text-dim: #8c897f;
+  --line: rgba(255, 255, 255, 0.1);
+  --fill: #f2f1ee;
+
+  --glass-tint: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -23,9 +77,11 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--bg-image), var(--bg);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: var(--serif);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
@@ -36,7 +92,59 @@ button {
   cursor: pointer;
 }
 
-/* Layout ------------------------------------------------------------- */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Liquid glass --------------------------------------------------------- */
+/* Layered backdrop-blur + SVG turbulence displacement + specular border,
+   rather than a flat blur, so the surface actually refracts what's under it. */
+
+.glass {
+  position: relative;
+  border-radius: var(--r-md);
+  isolation: isolate;
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: blur(6px) saturate(160%);
+  -webkit-backdrop-filter: blur(6px) saturate(160%);
+  filter: url(#glass-distortion);
+}
+
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass-tint);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 0 0 1px var(--glass-border),
+    0 8px 24px -12px var(--glass-shadow);
+  pointer-events: none;
+}
+
+.glass__content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Layout ---------------------------------------------------------------- */
 
 .layout {
   display: flex;
@@ -46,31 +154,59 @@ button {
 .sidebar {
   width: 280px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--line);
   padding: 28px 20px;
+}
+
+.sidebar__scroll {
+  flex: 1;
   overflow-y: auto;
+  margin: 0 -8px;
+  padding: 0 8px;
 }
 
 .wordmark {
-  font-size: 20px;
-  font-weight: 500;
+  font-family: var(--serif);
   font-style: italic;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   margin: 0 0 24px;
-  color: var(--gold);
+  color: var(--text);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.theme-toggle__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fill);
 }
 
 .stage {
   flex: 1;
   overflow-y: auto;
-  padding: 40px 56px;
+  padding: 48px 56px;
 }
 
-/* Chat list ------------------------------------------------------------ */
+/* Chat list -------------------------------------------------------------- */
 
 .chat-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .chat-item {
@@ -78,22 +214,32 @@ button {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  padding: 10px 10px;
-  border-radius: 4px;
+  width: 100%;
+  padding: 11px 13px;
   text-align: left;
+  transition: transform 0.15s ease;
+}
+
+.chat-item {
+  border-radius: var(--r-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .chat-item:hover {
-  background: var(--bg-raised);
+  transform: translateX(2px);
+  background: var(--glass-tint);
 }
 
 .chat-item--active {
-  background: var(--bg-raised);
-  box-shadow: inset 2px 0 0 var(--gold);
+  background: var(--glass-tint);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 2px 0 0 var(--fill),
+    inset 0 0 0 1px var(--glass-border);
 }
 
 .chat-item__title {
-  font-size: 14px;
+  font-size: 13.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -106,7 +252,7 @@ button {
   flex-shrink: 0;
 }
 
-/* Empty state ------------------------------------------------------------ */
+/* Empty state -------------------------------------------------------------- */
 
 .empty-state {
   max-width: 420px;
@@ -114,30 +260,42 @@ button {
 }
 
 .empty-state__heading {
-  font-size: 26px;
-  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 400;
+  margin: 0 0 10px;
 }
 
 .empty-state__body {
-  font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text-dim);
   margin: 0;
 }
 
-/* Ranking ------------------------------------------------------------ */
+.empty-state__body code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--glass-tint);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Ranking -------------------------------------------------------------- */
 
 .ranking {
   max-width: 640px;
 }
 
 .ranking__header {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .ranking__title {
-  font-size: 32px;
+  font-family: var(--serif);
+  font-size: 36px;
+  font-weight: 400;
   margin: 0 0 4px;
 }
 
@@ -151,18 +309,19 @@ button {
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 28px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
 }
 
 .tab {
   font-family: var(--mono);
   font-size: 12px;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   color: var(--text-dim);
+  transition: color 0.15s ease;
 }
 
 .tab:hover {
@@ -170,14 +329,23 @@ button {
 }
 
 .tab--active {
-  background: var(--gold);
-  color: var(--bg);
+  color: var(--text);
+  background: var(--glass-tint);
+  box-shadow: inset 0 0 0 1px var(--glass-border), inset 0 1px 0 var(--glass-highlight);
+}
+
+/* Word bars + expand -------------------------------------------------------------- */
+
+.word-bars-wrap {
+  position: relative;
 }
 
 .word-bars {
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
 }
 
 .word-bar {
@@ -185,7 +353,7 @@ button {
   grid-template-columns: 24px 100px 1fr 44px;
   align-items: center;
   gap: 12px;
-  padding: 6px 0;
+  padding: 7px 0;
 }
 
 .word-bar__rank {
@@ -196,23 +364,24 @@ button {
 }
 
 .word-bar__word {
-  font-size: 15px;
+  font-size: 14.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .word-bar__track {
-  height: 6px;
-  background: var(--bg-raised);
+  height: 5px;
   border-radius: 3px;
   overflow: hidden;
+  background: var(--line);
 }
 
 .word-bar__fill {
   display: block;
   height: 100%;
-  background: var(--rose);
+  background: var(--fill);
+  border-radius: 3px;
 }
 
 .word-bar__count {
@@ -222,20 +391,137 @@ button {
   text-align: right;
 }
 
+.word-bars-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  background: linear-gradient(to bottom, transparent, var(--bg) 85%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.word-bars-fade > * {
+  pointer-events: auto;
+}
+
+.expand-btn {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+  padding: 9px 18px;
+  border-radius: 999px;
+}
+
+.expand-btn--standalone {
+  margin-top: 16px;
+}
+
+/* Sent (attachments) ---------------------------------------------------- */
+
+.sent {
+  margin-top: 44px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.sent__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+
+.sent__table-wrap {
+  border-radius: var(--r-sm);
+  padding: 4px 16px;
+  overflow-x: auto;
+}
+
+.sent__table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 100%;
+}
+
+.sent__table th,
+.sent__table td {
+  padding: 8px 14px 8px 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sent__table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.sent__sender {
+  text-align: left;
+  color: var(--text);
+}
+
+.sent__total-row td {
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  padding-top: 10px;
+}
+
+/* Emoji chips (reactions) ------------------------------------------------ */
+
+.emoji-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.emoji-chip {
+  border-radius: 999px;
+}
+
+.emoji-chip .glass__content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+}
+
+.emoji-chip__emoji {
+  font-size: 15px;
+}
+
+.emoji-chip__count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 /* Stretched words ------------------------------------------------------ */
 
 .stretched {
-  margin-top: 40px;
-  padding-top: 20px;
+  margin-top: 44px;
+  padding-top: 22px;
   border-top: 1px solid var(--line);
 }
 
 .stretched__title {
-  font-size: 15px;
-  font-weight: 500;
+  font-family: var(--serif);
   font-style: italic;
-  color: var(--gold);
-  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 14px;
 }
 
 .stretched__list {
@@ -244,12 +530,12 @@ button {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .stretched__item {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 12.5px;
   display: flex;
   gap: 8px;
   align-items: baseline;

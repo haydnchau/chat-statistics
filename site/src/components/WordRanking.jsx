@@ -1,8 +1,13 @@
 import { useState } from "react";
+import AttachmentsSummary from "./AttachmentsSummary.jsx";
+import ReactionsSummary from "./ReactionsSummary.jsx";
+
+const COLLAPSED_COUNT = 12;
 
 export default function WordRanking({ data }) {
   const senders = Object.keys(data.top_words_by_sender);
   const [view, setView] = useState("overall"); // "overall" | sender name
+  const [expanded, setExpanded] = useState(false);
 
   const words =
     view === "overall"
@@ -10,6 +15,13 @@ export default function WordRanking({ data }) {
       : data.top_words_by_sender[view] || [];
 
   const maxCount = words.length ? words[0][1] : 1;
+  const visibleWords = expanded ? words : words.slice(0, COLLAPSED_COUNT);
+  const hasMore = words.length > COLLAPSED_COUNT;
+
+  function selectView(name) {
+    setView(name);
+    setExpanded(false);
+  }
 
   return (
     <div className="ranking">
@@ -23,7 +35,7 @@ export default function WordRanking({ data }) {
       <div className="tabs">
         <button
           className={"tab" + (view === "overall" ? " tab--active" : "")}
-          onClick={() => setView("overall")}
+          onClick={() => selectView("overall")}
         >
           everyone
         </button>
@@ -31,28 +43,60 @@ export default function WordRanking({ data }) {
           <button
             key={name}
             className={"tab" + (view === name ? " tab--active" : "")}
-            onClick={() => setView(name)}
+            onClick={() => selectView(name)}
           >
             {name}
           </button>
         ))}
       </div>
 
-      <ol className="word-bars">
-        {words.slice(0, 40).map(([word, count], i) => (
-          <li className="word-bar" key={word}>
-            <span className="word-bar__rank">{i + 1}</span>
-            <span className="word-bar__word">{word}</span>
-            <span className="word-bar__track">
-              <span
-                className="word-bar__fill"
-                style={{ width: `${(count / maxCount) * 100}%` }}
-              />
-            </span>
-            <span className="word-bar__count">{count}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="word-bars-wrap">
+        <ol className="word-bars">
+          {visibleWords.map(([word, count], i) => (
+            <li className="word-bar" key={word}>
+              <span className="word-bar__rank">{i + 1}</span>
+              <span className="word-bar__word">{word}</span>
+              <span className="word-bar__track">
+                <span
+                  className="word-bar__fill"
+                  style={{ width: `${(count / maxCount) * 100}%` }}
+                />
+              </span>
+              <span className="word-bar__count">{count}</span>
+            </li>
+          ))}
+        </ol>
+
+        {hasMore && !expanded && (
+          <div className="word-bars-fade">
+            <button className="expand-btn glass" onClick={() => setExpanded(true)}>
+              <span className="glass__content">
+                Show all {words.length} words
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {hasMore && expanded && (
+        <button
+          className="expand-btn expand-btn--standalone glass"
+          onClick={() => setExpanded(false)}
+        >
+          <span className="glass__content">Show fewer</span>
+        </button>
+      )}
+
+      {data.attachment_counts && Object.keys(data.attachment_counts).length > 0 && (
+        <AttachmentsSummary counts={data.attachment_counts} />
+      )}
+
+      {data.reaction_counts && Object.keys(data.reaction_counts).length > 0 && (
+        <ReactionsSummary
+          counts={data.reaction_counts}
+          emojiCounts={data.reaction_emoji_counts}
+        />
+      )}
 
       {data.most_stretched_words?.length > 0 && (
         <section className="stretched">

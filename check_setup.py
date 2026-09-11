@@ -9,6 +9,9 @@ import importlib.util
 import shutil
 import subprocess
 import sys
+import threading
+import time
+import webbrowser
 from pathlib import Path
 
 SITE_DIR = Path(__file__).parent / "site"
@@ -41,12 +44,22 @@ def _run(cmd):
         return None
 
 
+# Resolved full paths, filled in by check_node()/check_npm(). On Windows,
+# npm/npx are .cmd shim scripts, not real executables -- subprocess can only
+# launch them without shell=True if given the exact resolved path (plain
+# "npm" fails with WinError 2 even though shutil.which finds it fine).
+NODE_PATH = None
+NPM_PATH = None
+
+
 def check_node():
-    if shutil.which("node") is None:
+    global NODE_PATH
+    NODE_PATH = shutil.which("node")
+    if NODE_PATH is None:
         print("✗ Node.js not found.")
         print("   Fix: install from https://nodejs.org (LTS) or via nvm")
         return False
-    version = _run(["node", "--version"])  # e.g. "v20.11.0"
+    version = _run([NODE_PATH, "--version"])  # e.g. "v20.11.0"
     if not version:
         print("✗ Could not run `node --version`")
         return False
@@ -59,10 +72,12 @@ def check_node():
 
 
 def check_npm():
-    if shutil.which("npm") is None:
+    global NPM_PATH
+    NPM_PATH = shutil.which("npm")
+    if NPM_PATH is None:
         print("✗ npm not found (usually ships with Node.js).")
         return False
-    version = _run(["npm", "--version"])
+    version = _run([NPM_PATH, "--version"])
     print(f"✓ npm {version} OK")
     return True
 
@@ -78,7 +93,7 @@ def check_site_deps():
     print("✗ site/node_modules missing (React app dependencies not installed)")
     answer = input("   Run `npm install` in site/ now? [y/N] ").strip().lower()
     if answer == "y":
-        proc = subprocess.run(["npm", "install"], cwd=SITE_DIR)
+        proc = subprocess.run([NPM_PATH, "install"], cwd=SITE_DIR)
         if proc.returncode == 0:
             print("✓ npm install succeeded")
             return True
@@ -100,13 +115,24 @@ def main():
         checks.append(check_site_deps())
 
     print()
-    if all(checks):
-        print("Everything looks good. Next steps:")
-        print("  1. python3 process_chat.py     # pick a chat, generate its stats")
-        print("  2. cd site && npm run dev      # launch the local site")
-    else:
+    if not all(checks):
         print("Fix the items marked ✗ above, then re-run this script.")
         sys.exit(1)
+
+    print("Everything looks good.")
+    print("Tip: run `python3 process_chat.py` any time to add a chat --")
+    print("     before or after the site starts, then just refresh the page.\n")
+    launch_dev_server()
+
+
+def launch_dev_server(port=5173):
+    print("Starting the local site (Ctrl+C to stop)...")
+    proc = subprocess.Popen([NPM_PATH, "run", "dev"], cwd=SITE_DIR)
+    threading.Timer(2.5, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
 
 
 if __name__ == "__main__":
