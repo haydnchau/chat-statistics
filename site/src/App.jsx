@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import ChatList from "./components/ChatList.jsx";
 import WordRanking from "./components/WordRanking.jsx";
 import EmptyState from "./components/EmptyState.jsx";
 import Overview from "./components/Overview.jsx";
+import ChatsPage from "./components/ChatsPage.jsx";
 
 function GlassFilter() {
   // SVG turbulence + displacement, applied via `filter: url(#glass-distortion)`
@@ -56,6 +56,12 @@ export default function App() {
   const [overview, setOverview] = useState(null);
   const [overviewError, setOverviewError] = useState(false);
   const [theme, setTheme] = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  function selectPage(name) {
+    setPage(name);
+    setMobileMenuOpen(false); // collapse the menu after picking something on mobile
+  }
 
   // Load the list of processed chats once on mount.
   useEffect(() => {
@@ -91,38 +97,58 @@ export default function App() {
   }, [page]);
 
   const hasChats = manifest && manifest.length > 0;
+  const isChatsSection =
+    page === "chats" || (hasChats && manifest.some((m) => m.file === page));
 
   return (
     <div className="layout">
       <GlassFilter />
 
       <aside className="sidebar">
-        <h1 className="wordmark">ChatStats</h1>
-
-        <button
-          className={
-            "chat-item nav-item" + (page === "overview" ? " chat-item--active" : "")
-          }
-          onClick={() => setPage("overview")}
-        >
-          <span className="chat-item__title">Overview</span>
-        </button>
-
-        <div className="sidebar__scroll">
-          {hasChats && (
-            <ChatList chats={manifest} activeFile={page} onSelect={setPage} />
-          )}
+        <div className="sidebar__top">
+          <h1 className="wordmark">ChatStats</h1>
+          <button
+            className="menu-toggle"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+          >
+            <span className="menu-toggle__bar" />
+            <span className="menu-toggle__bar" />
+            <span className="menu-toggle__bar" />
+          </button>
         </div>
 
-        <button
-          className="theme-toggle glass"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          <span className="glass__content" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="theme-toggle__dot" />
-            {theme === "dark" ? "Dark mode" : "Light mode"}
-          </span>
-        </button>
+        <div className={"sidebar__body" + (mobileMenuOpen ? " sidebar__body--open" : "")}>
+          <button
+            className={
+              "chat-item nav-item" + (page === "overview" ? " chat-item--active" : "")
+            }
+            onClick={() => selectPage("overview")}
+          >
+            <span className="chat-item__title">Overview</span>
+          </button>
+
+          <button
+            className={"chat-item nav-item" + (isChatsSection ? " chat-item--active" : "")}
+            onClick={() => selectPage("chats")}
+          >
+            <span className="chat-item__title">Chats</span>
+            {hasChats && (
+              <span className="chat-item__count">{manifest.length.toLocaleString()}</span>
+            )}
+          </button>
+
+          <button
+            className="theme-toggle glass"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <span className="glass__content" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="theme-toggle__dot" />
+              {theme === "dark" ? "Dark mode" : "Light mode"}
+            </span>
+          </button>
+        </div>
       </aside>
 
       <main className="stage">
@@ -130,19 +156,25 @@ export default function App() {
           <Overview data={overview} error={overviewError} />
         )}
 
-        {page !== "overview" && manifestError && (
+        {page === "chats" && manifestError && (
           <EmptyState
             heading="No data yet"
             body="Run python3 process_chat.py from the project root to generate stats for a chat, then refresh this page."
           />
         )}
-        {page !== "overview" && !manifestError && !hasChats && (
+        {page === "chats" && !manifestError && !hasChats && (
           <EmptyState
             heading="Nothing processed yet"
             body="Run python3 process_chat.py, pick a conversation, then refresh this page."
           />
         )}
-        {page !== "overview" && chatData && <WordRanking data={chatData} />}
+        {page === "chats" && hasChats && (
+          <ChatsPage chats={manifest} onSelect={selectPage} />
+        )}
+
+        {page !== "overview" && page !== "chats" && chatData && (
+          <WordRanking data={chatData} onBack={() => selectPage("chats")} />
+        )}
       </main>
     </div>
   );

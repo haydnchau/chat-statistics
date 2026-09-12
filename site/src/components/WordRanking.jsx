@@ -4,7 +4,7 @@ import ReactionsSummary from "./ReactionsSummary.jsx";
 
 const COLLAPSED_COUNT = 12;
 
-export default function WordRanking({ data }) {
+export default function WordRanking({ data, onBack }) {
   const senders = Object.keys(data.top_words_by_sender);
   const [view, setView] = useState("overall"); // "overall" | sender name
   const [expanded, setExpanded] = useState(false);
@@ -51,6 +51,11 @@ export default function WordRanking({ data }) {
   return (
     <div className="ranking">
       <header className="ranking__header">
+        {onBack && (
+          <button className="back-link" onClick={onBack}>
+            <span aria-hidden="true">&#8592;</span> Chats
+          </button>
+        )}
         <h2 className="ranking__title">{data.title}</h2>
         <p className="ranking__subtitle">
           {data.total_words.toLocaleString()} words counted
