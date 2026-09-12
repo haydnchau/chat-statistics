@@ -275,6 +275,7 @@ def compute_stats(messages, exclude_stopwords=True):
     attachment_counts = defaultdict(Counter)  # sender -> {type: qty}
     reaction_counts = Counter()  # actor -> reactions given
     reaction_emoji_counts = Counter()  # emoji -> times used
+    reaction_emoji_by_actor = defaultdict(Counter)  # actor -> {emoji: count}
     total_words = 0
     unmatched_reaction_samples = []  # debug: content mentioning "react" that slipped through
 
@@ -287,7 +288,9 @@ def compute_stats(messages, exclude_stopwords=True):
             emoji = r.get("reaction", "")
             reaction_counts[actor] += 1
             if emoji:
-                reaction_emoji_counts[normalize_emoji(emoji)] += 1
+                normalized = normalize_emoji(emoji)
+                reaction_emoji_counts[normalized] += 1
+                reaction_emoji_by_actor[actor][normalized] += 1
 
         content = msg.get("content")
 
@@ -297,7 +300,9 @@ def compute_stats(messages, exclude_stopwords=True):
             if m:
                 actor = m.group("actor") or sender
                 reaction_counts[actor] += 1
-                reaction_emoji_counts[normalize_emoji(m.group("emoji"))] += 1
+                normalized = normalize_emoji(m.group("emoji"))
+                reaction_emoji_counts[normalized] += 1
+                reaction_emoji_by_actor[actor][normalized] += 1
                 continue
 
         attach_type, attach_qty = classify_attachment(msg)
@@ -335,6 +340,9 @@ def compute_stats(messages, exclude_stopwords=True):
         "reaction_emoji_counts": dict(
             Counter(reaction_emoji_counts).most_common(20)
         ),
+        "reaction_emoji_counts_by_sender": {
+            actor: counter.most_common() for actor, counter in reaction_emoji_by_actor.items()
+        },
         "_debug_unmatched_reaction_samples": unmatched_reaction_samples,
         "top_words_overall": overall.most_common(100),
         # NOTE: intentionally NOT capped at 50 (was .most_common(50)). The
@@ -435,6 +443,11 @@ def build_overview():
     attachments_sent = Counter()
     most_active_chat = None
     word_totals = Counter()
+    emoji_totals = Counter()
+    messages_by_chat = []
+    words_by_chat = []
+    reactions_by_chat = []
+    active_chats = []
 
     for c in chats:
         message_counts = c.get("message_counts", {})
@@ -442,15 +455,36 @@ def build_overview():
         your_count = message_counts.get(you, 0) if you else 0
         total_messages_sent += your_count
 
+        chat_file = f"{safe_filename(c['id'])}.json"
+        chat_title = c.get("title", "?")
+        your_words = (
+            sum(count for _, count in c.get("top_words_by_sender", {}).get(you, []))
+            if you
+            else 0
+        )
+        your_reactions = c.get("reaction_counts", {}).get(you, 0) if you else 0
+
+        messages_by_chat.append({"file": chat_file, "title": chat_title, "count": your_count})
+        words_by_chat.append({"file": chat_file, "title": chat_title, "count": your_words})
+        reactions_by_chat.append({"file": chat_file, "title": chat_title, "count": your_reactions})
+        active_chats.append({
+            "file": chat_file,
+            "title": chat_title,
+            "message_count": chat_total,
+            "your_message_count": your_count,
+        })
+
         if you:
-            total_reactions_given += c.get("reaction_counts", {}).get(you, 0)
+            total_reactions_given += your_reactions
             for atype, qty in c.get("attachment_counts", {}).get(you, {}).items():
                 attachments_sent[atype] += qty
+            for emoji, count in c.get("reaction_emoji_counts_by_sender", {}).get(you, []):
+                emoji_totals[emoji] += count
 
         if most_active_chat is None or chat_total > most_active_chat["message_count"]:
             most_active_chat = {
-                "file": f"{safe_filename(c['id'])}.json",
-                "title": c.get("title", "?"),
+                "file": chat_file,
+                "title": chat_title,
                 "message_count": chat_total,
                 "your_message_count": your_count,
             }
@@ -468,6 +502,11 @@ def build_overview():
         "attachments_sent": dict(attachments_sent.most_common()),
         "most_active_chat": most_active_chat,
         "top_words_mine": word_totals.most_common(150),
+        "reaction_emojis_mine": emoji_totals.most_common(30),
+        "messages_by_chat": sorted(messages_by_chat, key=lambda x: x["count"], reverse=True),
+        "words_by_chat": sorted(words_by_chat, key=lambda x: x["count"], reverse=True),
+        "reactions_by_chat": sorted(reactions_by_chat, key=lambda x: x["count"], reverse=True),
+        "active_chats": sorted(active_chats, key=lambda x: x["message_count"], reverse=True),
     }
     OVERVIEW_PATH.write_text(
         json.dumps(overview, ensure_ascii=False, indent=2), encoding="utf-8"
