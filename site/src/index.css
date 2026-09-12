@@ -3,13 +3,17 @@
 /* Tokens -------------------------------------------------------------- */
 
 :root {
-  --r-sm: 8px;
-  --r-md: 14px;
-  --r-lg: 20px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
 
   --serif: "Archivo Black", "Arial Black", sans-serif;
   --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Apple's sheet/spring-style easing -- fast start, soft settle. Used
+     everywhere instead of plain "ease" for a more fluid, less mechanical feel. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root[data-theme="light"] {
@@ -125,6 +129,7 @@ a:focus-visible {
 .glass {
   position: relative;
   border-radius: var(--r-md);
+  overflow: hidden;
   isolation: isolate;
 }
 
@@ -148,7 +153,8 @@ a:focus-visible {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     inset 0 0 0 1px var(--glass-border),
-    0 8px 24px -12px var(--glass-shadow);
+    0 1px 2px -1px var(--glass-shadow),
+    0 12px 28px -14px var(--glass-shadow);
   pointer-events: none;
 }
 
@@ -184,7 +190,7 @@ a:focus-visible {
   font-family: var(--serif);
   font-size: 22px;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin: 0 0 24px;
   color: var(--text);
 }
@@ -215,8 +221,10 @@ a:focus-visible {
   padding: 48px 56px;
 }
 
-.nav-item {
-  margin-bottom: 14px;
+.chat-item.nav-item {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .sidebar__top {
@@ -250,17 +258,42 @@ a:focus-visible {
 .chats-search {
   display: block;
   width: 100%;
-  padding: 12px 16px;
+  box-sizing: border-box;
+  padding: 9px 14px 9px 38px;
   margin-bottom: 24px;
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 999px;
+  background-color: var(--glass-tint);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236d6a63' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 13px center;
+  background-size: 15px 15px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--text);
-  background: transparent;
+  transition: background-color 0.2s var(--ease);
+}
+
+.chats-search:hover {
+  background-color: var(--glass-highlight);
+}
+
+.chats-search:focus {
+  outline: none;
+  background-color: var(--glass-highlight);
 }
 
 .chats-search::placeholder {
   color: var(--text-dim);
+  font-weight: 500;
+}
+
+:root[data-theme="dark"] .chats-search {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c897f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+}
+
+.chats-search.glass::after {
+  box-shadow: none;
 }
 
 .chats-grid {
@@ -272,11 +305,15 @@ a:focus-visible {
 .chat-card {
   border-radius: var(--r-md);
   text-align: left;
-  transition: transform 0.15s ease;
+  transition: transform 0.2s var(--ease);
 }
 
 .chat-card:hover {
   transform: translateY(-2px);
+}
+
+.chat-card:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .chat-card .glass__content {
@@ -324,7 +361,7 @@ a:focus-visible {
 
 .chat-item {
   border-radius: var(--r-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .chat-item:hover {
@@ -332,10 +369,13 @@ a:focus-visible {
   background: var(--glass-tint);
 }
 
+.chat-item:active {
+  transform: translateX(2px) scale(0.98);
+}
+
 .chat-item--active {
   background: var(--glass-tint);
   box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
     inset 2px 0 0 var(--fill),
     inset 0 0 0 1px var(--glass-border);
 }
@@ -401,7 +441,7 @@ a:focus-visible {
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.2s var(--ease);
 }
 
 .stat-card:hover {
@@ -409,7 +449,7 @@ a:focus-visible {
 }
 
 .stat-card:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .stat-card .glass__content {
@@ -420,6 +460,8 @@ a:focus-visible {
   font-family: var(--serif);
   font-size: 32px;
   font-weight: 400;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   margin: 0 0 4px;
 }
 
@@ -487,12 +529,28 @@ a:focus-visible {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   z-index: 50;
+  animation: overlay-in 0.2s var(--ease);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
 }
 
 .modal {
@@ -501,6 +559,7 @@ a:focus-visible {
   max-height: 80vh;
   overflow: hidden;
   border-radius: var(--r-lg);
+  animation: modal-in 0.3s var(--ease);
 }
 
 .modal .glass__content {
@@ -533,7 +592,7 @@ a:focus-visible {
   padding: 4px 10px;
   border-radius: 999px;
   flex-shrink: 0;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .modal__close:hover {
@@ -560,7 +619,7 @@ a:focus-visible {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-dim);
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition: color 0.2s var(--ease), transform 0.2s var(--ease);
 }
 
 .back-link:hover {
@@ -572,6 +631,7 @@ a:focus-visible {
   font-family: var(--serif);
   font-size: 30px;
   font-weight: 400;
+  letter-spacing: -0.015em;
   margin: 0 0 4px;
 }
 
@@ -599,7 +659,7 @@ a:focus-visible {
   padding: 7px 14px;
   border-radius: 999px;
   color: var(--text-dim);
-  transition: color 0.15s ease;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .tab:hover {
@@ -662,6 +722,7 @@ a:focus-visible {
   height: 100%;
   background: var(--fill);
   border-radius: 3px;
+  transition: width 0.4s var(--ease);
 }
 
 .word-bar__count {
